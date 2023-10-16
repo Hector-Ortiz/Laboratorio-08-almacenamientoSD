@@ -1,2 +1,200 @@
 // este laboratorio se enfoca en utilizar la tarjeta SD para almacenar imagenes creadas por el usuario, y por medio de un menu se mostrara si se quiere editar la imagen o borrar la imagen
-//
+// laboratorio #08
+// Simulacion en WOKWI: https://wokwi.com/projects/378778517243010049
+// Hector Andres Ortiz Reyes 20004
+
+// librerias que se estan usando
+#include <Adafruit_ILI9341.h>
+#include <SPI.h>
+// los pines de la ILI9341, botones, y tarjeta SD
+#define TFT_DC 2
+#define TFT_CS 15
+
+Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC);
+
+#define cambio 21  // Botón para cambiar colores
+#define arriba 25     // Botón para mover hacia arriba
+#define abajo 14   // Botón para mover hacia abajo
+#define izquierda 26   // Botón para mover hacia la izquierda
+#define derecha 27  // Botón para mover hacia la derecha
+#define guardar 22   // Botón para guardar la imagen
+#define amarillo 32  // Botón amarillo para seleccionar opción 1 (Volver a dibujar)
+#define rojo 33     // Botón rojo para seleccionar opción 2 (Borrar)
+// cursor en los ejes X y Y, y color que son las letras para simular colores
+int X = 0;
+int Y = 0;
+int color = 1; // 1: '@', 2: '#', 3: '$', 4: '%'
+
+char drawingCanvas[ILI9341_TFTWIDTH][ILI9341_TFTHEIGHT];
+
+bool imagenguardada = false; // guardado de imagenes en la SD
+bool menu = false; // Variable para controlar si el menú se ha mostrado
+bool mensaje = false; // Bandera para mostrar mensajes temporales
+unsigned long showMessageStartMillis;
+unsigned long showMessageDuration = 5000; // 5 segundos
+
+// los menus del programa en donde se separan por dibujo, borrado, edicion, y menu principal
+enum MenuState {
+  DRAWING,
+  MENU,
+  DELETE_IMAGE,
+  REDRAW_IMAGE
+};
+// como va a empezar cuando se encienda el ESP32
+MenuState menuState = DRAWING;
+
+void setup() {
+  tft.begin();
+  tft.setRotation(1); // Rotación de 90 grados
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(1); // tamaño del texto
+
+  // Inicializa el arreglo de dibujo
+  for (int x = 0; x < ILI9341_TFTWIDTH; x++) {
+    for (int y = 0; y < ILI9341_TFTHEIGHT; y++) {
+      drawingCanvas[x][y] = ' '; // Inicializa con espacios en blanco
+    }
+  }
+// estados de los botones en pullup
+  pinMode(cambio, INPUT_PULLUP);
+  pinMode(arriba, INPUT_PULLUP);
+  pinMode(abajo, INPUT_PULLUP);
+  pinMode(izquierda, INPUT_PULLUP);
+  pinMode(derecha, INPUT_PULLUP);
+  pinMode(guardar, INPUT_PULLUP);
+  pinMode(amarillo, INPUT_PULLUP);
+  pinMode(rojo, INPUT_PULLUP);
+}
+
+void loop() {
+  unsigned long currentMillis = millis();
+// los controles de los botones
+  if (digitalRead(cambio) == LOW) { // cambio de figura que simula color @, #, $, %
+    changeColor();
+  } else if (digitalRead(arriba) == LOW) { // al presionar el cursor va a dibujar para arriba
+    moveCursor(0, -1);
+  } else if (digitalRead(abajo) == LOW) { // al presionar el cursor va a dibujar para abajo
+    moveCursor(0, 1);
+  } else if (digitalRead(izquierda) == LOW) { // al presionar el cursor va a dibujar para la izquierda
+    moveCursor(-1, 0);
+  } else if (digitalRead(derecha) == LOW) { // al presionar el cursor va a dibujar para la derecha
+    moveCursor(1, 0);
+  } else if (digitalRead(guardar) == LOW) { // al presionar guardara la imagen en la SD y enviara al menu principal
+    if (!imagenguardada) {
+      if (menuState == MENU) { // si se presiona el boton amarillo se mandara a la parte de dibujo
+        menuState = REDRAW_IMAGE;
+      } else if (menuState == DELETE_IMAGE) { // si se presiona el boton rojo se borrara las imagenes de la SD
+        resetCanvas();
+        showMessage("Borrando dibujo");
+        menuState = MENU;
+      }
+      imagenguardada = true;
+    } else {
+      menuState = MENU; // Regresa al menú principal
+    }
+  } else if (digitalRead(amarillo) == LOW) { // se lanza el mensaje de volver a dibujar antes de entrar al menu de dibujo
+    menuState = DRAWING;
+    resetCanvas();
+    showMessage("Volver a dibujar");
+  } else if (digitalRead(rojo) == LOW) { // se lanza el mensaje de borrar todo antes de regresar al menu principal
+    resetCanvas();
+    showMessage("Borrando dibujo");
+    menuState = MENU;
+  }
+
+  // Verifica si es necesario ocultar el mensaje
+  if (mensaje && currentMillis - showMessageStartMillis >= showMessageDuration) {
+    tft.fillScreen(ILI9341_BLACK);
+    mensaje = false;
+  }
+
+  switch (menuState) {
+    case DRAWING:
+      drawPixel(X, Y, color);
+      break;
+    case MENU:
+      if (!menu) {
+        displayMenu();
+        menu = true;
+      }
+      break;
+    case DELETE_IMAGE:
+      resetCanvas();
+      menuState = MENU;
+      imagenguardada = false;
+      break;
+    case REDRAW_IMAGE:
+      // Lógica para volver a dibujar
+      break;
+  }
+
+  delay(100); // Retardo de 100 milisegundos
+}
+// el area de cambio de color, en donde esta la logica del boton de cambio de color
+void changeColor() {
+  color = (color % 4) + 1;
+}
+// movimiento del cursor dependiendo de los botones de movimiento
+void moveCursor(int deltaX, int deltaY) {
+  X += deltaX;
+  Y += deltaY;
+  X = constrain(X, 0, ILI9341_TFTWIDTH - 1);
+  Y = constrain(Y, 0, ILI9341_TFTHEIGHT - 1);
+}
+// Casos en donde dependiendo de cuantas veces se presione el boton de cambio, se seleccione el simbolo para dibujar
+void drawPixel(int x, int y, int color) {
+  char drawChar;
+  switch (color) {
+    case 1: // caso 1 se pone el simbolo de @ para usarlo como color para pintar
+      drawChar = '@';
+      break;
+    case 2: // caso 2 se pone el simbolo de # para usarlo como color para pintar
+      drawChar = '#';
+      break;
+    case 3: // caso 3 se pone el simbolo de $ para usarlo como color para pintar
+      drawChar = '$';
+      break;
+    case 4: // caso 4 se pone el simbolo de % para usarlo como color para pintar
+      drawChar = '%';
+      break;
+  }
+  tft.setCursor(x * 6, y * 8);
+  tft.print(drawChar);
+  drawingCanvas[x][y] = drawChar;
+}
+// los mensajes que se mostraran en el menu principal
+void displayMenu() {
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setCursor(10, 10);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(4); // Aumenta el tamaño de las letras del menú
+  tft.println("Menu:");
+
+  tft.setTextSize(2); // Aumenta el tamaño de las letras del mensaje
+  tft.setCursor(20, 50);
+  tft.println("1. Volver a dibujar (Boton Amarillo)");
+  tft.println("2. Borrar dibujo (Boton Rojo)");
+}
+
+void resetCanvas() {
+  tft.fillScreen(ILI9341_BLACK);
+  for (int x = 0; x < ILI9341_TFTWIDTH; x++) {
+    for (int y = 0; y < ILI9341_TFTHEIGHT; y++) {
+      drawingCanvas[x][y] = ' ';
+    }
+  }
+  X = 0;
+  Y = 0;
+  menu = false;
+}
+
+void showMessage(const char* message) {
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setCursor(10, 10);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(2); // Aumenta el tamaño de las letras del mensaje
+  tft.println(message);
+  mensaje = true;
+  showMessageStartMillis = millis();
+}
