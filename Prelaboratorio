@@ -1,0 +1,74 @@
+// Prelaboratorio #08
+// codigo de wokwi: https://wokwi.com/projects/378674269239256065 
+// Hector Andres Ortiz Reyes 20004
+// todas las bibliotecas que se estan utilizando
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_ILI9341.h>
+
+const char* ssid = "Wokwi-GUEST";
+const char* password = "";
+
+// pines que se estan utilizando en el ESP32
+#define BTN_PIN 5
+#define TFT_DC 2
+#define TFT_CS 15
+Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC);
+
+const int buttonPinR = 25; // Pin del botón para el boton rojo
+const int buttonPinA = 26; // Pin del botón para el boton amarillo
+const int buttonPinV = 27; // Pin del botón para el boton verde
+
+bool isMenuVisible = true;
+
+void setup() {
+  tft.begin();
+  tft.setRotation(1); // Rotación de 90 grados
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(2);
+  
+  pinMode(buttonPinR, INPUT_PULLUP); // boton rojo en pullup
+  pinMode(buttonPinA, INPUT_PULLUP); // boton amarillo en pullup
+  pinMode(buttonPinV, INPUT_PULLUP); // boton verde en pullup
+}
+
+// loop y mensajes que estan saliendo en la pantalla
+void loop() {
+  if (isMenuVisible) {
+    tft.setCursor(0, 0);
+    tft.println("1. R. hola"); // mensaje que dice hola en el menu para el boton rojo
+    tft.println("2. A. 2+2"); // mensaje que dice 2 + 2 para el boton amarillo
+    tft.println("3. V. arroz"); // mensaje que dice arroz para el boton verde
+    
+    if (digitalRead(buttonPinR) == LOW) { // si se presiona el boton rojo se enviara como respuesta el mensaje hola
+      tft.fillScreen(ILI9341_BLACK);
+      tft.setCursor(10, 10);
+      tft.println("hola");
+      isMenuVisible = false;
+      delay(500); // Espera para evitar múltiples activaciones con una sola pulsación.
+    } else if (digitalRead(buttonPinA) == LOW) { // si se presiona el boton amarillo se enviara como respuesta al mensaje 4
+      tft.fillScreen(ILI9341_BLACK);
+      tft.setCursor(10, 10);
+      tft.println("4");
+      isMenuVisible = false;
+      delay(500);
+    } else if (digitalRead(buttonPinV) == LOW) { // si se presiona el boton verde se mandara como respuesta la oracion arroz con leche me quiero dormir
+      tft.fillScreen(ILI9341_BLACK);
+      tft.setCursor(10, 10);
+      tft.println("arroz con leche me quiero dormir");
+      isMenuVisible = false;
+      delay(500);
+    }
+  } else {
+// si se presiona por segunda vez el boton, sin importar los mensajes, la segunda pulsacion lo enviara al menu principal
+    if (digitalRead(buttonPinR) == LOW || digitalRead(buttonPinA) == LOW || digitalRead(buttonPinV) == LOW) { 
+      // Regresar al menú principal al presionar cualquier botón
+      tft.fillScreen(ILI9341_BLACK);
+      isMenuVisible = true;
+      delay(500);
+    }
+  }
+}
