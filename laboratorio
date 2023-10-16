@@ -1,0 +1,118 @@
+// en esta parte se mostraran 3 imagenes distintas en un menu mas ordenado a comparacion del menu del prelaboratorio
+// laboratorio #08
+// Simulacion en WOKWI: https://wokwi.com/projects/378677625369440257 
+// Hector Andres Ortiz Reyes 20004
+
+// las bibliotecas que se estan utilizando en el ESP32
+#include <Adafruit_ILI9341.h>
+
+// los pines que se estan utilizando para conectar la pantalla ILI9341 y botones
+#define TFT_DC 2
+#define TFT_CS 15
+Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC);
+
+const int buttonPinR = 25; // Pin del botón para "R. carita feliz"
+const int buttonPinA = 26; // Pin del botón para "A. Mario Bros"
+const int buttonPinV = 27; // Pin del botón para "V. Link" // Cambia el nombre del botón
+
+// las 3 imagenes generadas por esta aplicacion y una creada por mi: https://manytools.org/hacker-tools/convert-images-to-ascii-art/go
+const char carita_feliz[] = R"( // imagen de una cara feliz
+##########################
+##########################
+#####  ############  #####
+#####  ############  #####
+#####  ############  #####
+#####  ############  #####
+#####  ############  #####
+#  ####################  #
+#  ####################  #
+##  ##################  ##
+###  ################  ###
+#####    ########    #####
+#########        #########
+##########################
+)";
+
+const char mario_bros[] = R"( // imagen de mario bros
+. . . .%%%%%%%%%% . . . . 
+. . .%%%%%%****%%**%%%% . 
+ . %%//%%///*//%%///*//. .
+ . %%/*%%%%/*/*/*%%/*/*/*.
+ . %%%%/*///*//%%%%%%%%. .
+.  . %%%%%%%%%%%%%   ( . .
+. %%%%%%%%%%%%%%%%%%%%% . 
+%%%%%%%%%%%%%%%%%%%%%%%%*.
+*///%%%%..%%%%..%%%%*///..
+****%%%%%%%%%%%%%%%%**** .
+ . . %%%%%%. . %%%%%%. . .
+ . %%%%%%. . . . %%%%%%  .
+%%%%%%%% . . . .%%%%%%%% .
+)";
+
+const char linkImage[] = R"( // imagen de link de The Legend of Zelda
+        ............      
+      ................    
+  &&, ..,,,,,,,,,,,,..  #&
+  &&, ,,,,,,,,,,,,,,,,  #&
+  &&&&,,#&..#&&&*.&&*,&&&&
+    #&&&&&&&&&&&&&&&&&&&*,
+      ..#&&&*,,,#&&&*.,,,,
+    */////&&&&&&&&......#&
+*/////////////..........#&
+*/////##//////..,,,,,,..  
+*////*****////,,,,......  
+  ////##////,.......,,    
+    */////      .,,,,,    
+)";
+
+bool isMenuVisible = true;
+
+void setup() {
+  tft.begin();
+  tft.setRotation(1); // Rotación de 90 grados
+  tft.fillScreen(ILI9341_BLACK);
+  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextSize(2);
+
+  pinMode(buttonPinR, INPUT_PULLUP); // boton de color rojo en pullup
+  pinMode(buttonPinA, INPUT_PULLUP); // boton de color amarillo en pullup
+  pinMode(buttonPinV, INPUT_PULLUP); // boton de color verde en pullup
+}
+
+void loop() { // dependiendo del boton que se esta presionando se mostrara la imagen seleccionada arriba
+  if (isMenuVisible) { // es el menu que muestra las instrucciones y de que tratan las 3 imagenes ordenadas segun el color del boton
+    tft.setCursor(0, 0);
+    tft.println("Bienvenido a la biblioteca de imagenes, por favor presiona uno de los 3 botones y presiona una segunda vez para regresar al menu principal:");
+    tft.println("");   
+    tft.println("1. R. carita feliz");
+    tft.println("2. A. Mario Bros");
+    tft.println("3. V. Link"); // Cambia el nombre del botón
+
+    if (digitalRead(buttonPinR) == LOW) { // Al presionar el boton rojo se mostrara una imagen con una cara feliz
+      tft.fillScreen(ILI9341_BLACK);
+      tft.setCursor(0, 0);
+      tft.println(carita_feliz);
+      isMenuVisible = false;
+      delay(500);
+    } else if (digitalRead(buttonPinA) == LOW) { // al presionar el boton amarillo se mostrara una imagen de mario bros
+      tft.fillScreen(ILI9341_BLACK);
+      tft.setCursor(0, 0);
+      tft.println(mario_bros);
+      isMenuVisible = false;
+      delay(500);
+    } else if (digitalRead(buttonPinV) == LOW) { // al presionar el boton verde se mostrara la imagen de Link de The Legend of Zelda
+      tft.fillScreen(ILI9341_BLACK);
+      tft.setCursor(0, 0);
+      tft.println(linkImage); // Muestra la imagen de Link
+      isMenuVisible = false;
+      delay(500);
+    }
+  } else {
+// cuando se presione 2 veces cualquier boton que se regresara al menu principal
+    if (digitalRead(buttonPinR) == LOW || digitalRead(buttonPinA) == LOW || digitalRead(buttonPinV) == LOW) { 
+      tft.fillScreen(ILI9341_BLACK);
+      isMenuVisible = true;
+      delay(500);
+    }
+  }
+}
